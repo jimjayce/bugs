@@ -1,0 +1,61 @@
+java.lang.IllegalStateException: Cannot add header view to list -- setAdapter has already been called.
+at android.widget.ListView.addHeaderView(ListView.java:258)
+at LyricShareActivity.void initListData(meta.LyricInfo)(ProGuard:322)
+
+
+产生原因：addHeaderView()调用在setAdapter()之后，并且该代码运行在Android4.3之前的系统版本。Android SDK与API Level对应表
+
+ 
+
+我们来看看（Android4.3）API-18 和 （Android4.2）API-17的Listview代码片段：
+
+API-18   
+public void addHeaderView(View v, Object data, boolean isSelectable) {
+        final FixedViewInfo info = new FixedViewInfo();
+        info.view = v;
+        info.data = data;
+        info.isSelectable = isSelectable;
+        mHeaderViewInfos.add(info);
+ 
+        // Wrap the adapter if it wasn't already wrapped.
+        if (mAdapter != null) {
+            if (!(mAdapter instanceof HeaderViewListAdapter)) {
+                mAdapter = new HeaderViewListAdapter(mHeaderViewInfos, mFooterViewInfos, mAdapter);
+            }
+ 
+            // In the case of re-adding a header view, or adding one later on,
+            // we need to notify the observer.
+            if (mDataSetObserver != null) {
+                mDataSetObserver.onChanged();
+            }
+        }
+}
+API-17
+public void addHeaderView(View v, Object data, boolean isSelectable) {
+ 
+        if (mAdapter != null && ! (mAdapter instanceof HeaderViewListAdapter)) {
+            throw new IllegalStateException(
+                    "Cannot add header view to list -- setAdapter has already been called.");
+        }
+ 
+        FixedViewInfo info = new FixedViewInfo();
+        info.view = v;
+        info.data = data;
+        info.isSelectable = isSelectable;
+        mHeaderViewInfos.add(info);
+ 
+        // in the case of re-adding a header view, or adding one later on,
+        // we need to notify the observer
+        if (mAdapter != null && mDataSetObserver != null) {
+            mDataSetObserver.onChanged();
+        }
+}
+
+
+在API-17中，假如adapter不为空，则会直接抛出异常，而在API-18中则做了相关的优化。
+
+建议
+木有建设性的提议，只能提醒大家，目前市面上主流的Android系统还是Android4.3以下版本，所以在使用addHeaderView()要注意这一点。
+
+
+参考：https://blog.csdn.net/mtt1987/article/details/38535249 
